@@ -5,8 +5,15 @@ import { useAuth } from '../context/AuthContext';
 
 // Public Pages
 import Login from '../pages/public/Login';
-// import Register from '../pages/public/Register'; // Create next week
-// import Landing from '../pages/public/Landing'; // Create next week
+import RoleSelection from '../pages/public/RoleSelection';
+import Register from '../pages/public/Register';
+import EmailVerification from '../pages/public/EmailVerification';
+import ForgotPassword from '../pages/public/ForgotPassword';
+import ResetPassword from '../pages/public/ResetPassword';
+import PendingApproval from '../pages/public/PendingApproval';
+
+// Admin Pages
+import AdminDashboard from '../pages/admin/AdminDashboard';
 
 // Patient Pages (placeholder for now)
 // import PatientDashboard from '../pages/patient/Dashboard';
@@ -18,14 +25,42 @@ import Login from '../pages/public/Login';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, isApproved } = useAuth();
 
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />;
   }
 
+  // Check for role
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to="/" replace />;
+  }
+
+  // Check for doctor approval
+  if (user?.role === 'doctor' && !isApproved) {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
+  return children;
+};
+
+// Public Route - redirect if already logged in
+const PublicRoute = ({ children }) => {
+  const { isLoggedIn, isApproved, user } = useAuth();
+
+  if (isLoggedIn) {
+    // If doctor and not approved, go to pending approval
+    if (user?.role === 'doctor' && !isApproved) {
+      return <Navigate to="/pending-approval" replace />;
+    }
+    // Otherwise redirect to role-based dashboard
+    if (user?.role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+    if (user?.role === 'doctor') {
+      return <Navigate to="/doctor/dashboard" replace />;
+    }
+    return <Navigate to="/patient/dashboard" replace />;
   }
 
   return children;
@@ -36,10 +71,79 @@ const AppRoutes = () => {
     <Router>
       <Routes>
         {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
+        <Route 
+          path="/login" 
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          } 
+        />
+        
+        <Route 
+          path="/role-selection" 
+          element={
+            <PublicRoute>
+              <RoleSelection />
+            </PublicRoute>
+          } 
+        />
+        
+        <Route 
+          path="/register" 
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          } 
+        />
+        
+        <Route 
+          path="/verify-email" 
+          element={
+            <PublicRoute>
+              <EmailVerification />
+            </PublicRoute>
+          } 
+        />
+        
+        <Route 
+          path="/forgot-password" 
+          element={
+            <PublicRoute>
+              <ForgotPassword />
+            </PublicRoute>
+          } 
+        />
+        
+        <Route 
+          path="/reset-password" 
+          element={
+            <PublicRoute>
+              <ResetPassword />
+            </PublicRoute>
+          } 
+        />
+        
+        <Route 
+          path="/pending-approval" 
+          element={<PendingApproval />} 
+        />
+        
         <Route path="/" element={<Navigate to="/login" replace />} />
         
+        {/* Admin Routes */}
+        <Route 
+          path="/admin/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
         {/* TODO: Add more routes as you build them */}
+        
         {/* Patient Routes */}
         {/* <Route 
           path="/patient/dashboard" 
