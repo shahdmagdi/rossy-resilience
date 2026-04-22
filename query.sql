@@ -4,7 +4,10 @@
 -- COMMIT;
 -- -- -- -- SELECT email FROM users 
 -- -- -- -- WHERE email = 'Sehamzakaria1974@gmail.com';
--- SELECT email FROM users WHERE email = 'admin@hospital.com'
+SELECT *
+FROM doctors d
+-- JOIN users u ON d.doctor_id = u.user_id
+WHERE d.full_name = 'dr.basmala';
 
 
 

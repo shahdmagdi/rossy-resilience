@@ -151,13 +151,15 @@ def create_app():
     from routes.account import account_bp
     from routes.assignment import assignment_bp
     from routes.scan import scan_bp
+    from routes.profile import profile_bp
+
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(assignment_bp)
     app.register_blueprint(scan_bp)
-
+    app.register_blueprint(profile_bp)
     # DEBUG: Print all routes
     print("\n=== REGISTERED ROUTES ===")
     for rule in app.url_map.iter_rules():
