@@ -189,6 +189,12 @@ from services.doctor_auth_service import (
     verify_doctor_email,
     resend_doctor_verification_code,
 )
+from flask_jwt_extended import (
+    verify_jwt_in_request,
+    get_jwt_identity,
+    create_access_token
+)
+
 from services.login_service import login_user, logout_user
 from models import User, UserRole
 from models.doctor import Doctor, VerificationStatus
@@ -305,15 +311,56 @@ def login():
     if tokens:
         _set_jwt_cookies(res, *tokens)
     return res
+# ── POST /api/auth/refresh ────────────────────────────────
+@auth_bp.route("/refresh", methods=["POST", "OPTIONS"])
+def refresh_token():
+    try:
+        verify_jwt_in_request(refresh=True, locations=["cookies"])
+        user_id      = get_jwt_identity()
+        access_token = create_access_token(identity=user_id)
+
+        res = make_response(jsonify({
+            "success": True,
+            "message": "Token refreshed."
+        }), 200)
+
+        res.set_cookie(
+            "access_token",
+            access_token,
+            max_age  = ACCESS_COOKIE_MAX_AGE,
+            httponly = True,
+            samesite = "Lax",
+            secure   = False,   # ← change to True when deployed
+        )
+        return res
+
+    except Exception:
+        return jsonify({
+            "success": False,
+            "message": "Session expired. Please log in again."
+        }), 
+
+# @auth_bp.route("/logout", methods=["POST", "OPTIONS"])
+# def logout():
+#     response, status = logout_user()
+#     res = make_response(jsonify(response), status)
+#     res.delete_cookie("access_token")
+#     res.delete_cookie("refresh_token")
+#     return res
 
 @auth_bp.route("/logout", methods=["POST", "OPTIONS"])
 def logout():
+    # ← add this so logout_user() can read the token and blacklist it
+    try:
+        verify_jwt_in_request(locations=["cookies"])
+    except Exception:
+        pass  # still logout cleanly even if token already expired
+
     response, status = logout_user()
     res = make_response(jsonify(response), status)
     res.delete_cookie("access_token")
     res.delete_cookie("refresh_token")
     return res
-
 
 @auth_bp.route("/signup", methods=["POST", "OPTIONS"])
 @limiter.limit("5 per minute; 20 per hour")

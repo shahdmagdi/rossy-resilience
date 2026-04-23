@@ -162,7 +162,8 @@ from datetime import datetime
 from app import db, bcrypt
 from models import User, Doctor, UserRole, VerificationStatus
 from flask_jwt_extended import create_access_token, create_refresh_token
-
+from flask_jwt_extended import get_jwt
+from app import redis_client
 
 # ================= HELPERS =================
 
@@ -299,5 +300,14 @@ def _admin_login(user):
 
 # ================= LOGOUT =================
 
+# def logout_user():
+#     return {"success": True, "message": "Logged out successfully."}, 200
+
 def logout_user():
+    try:
+        jti = get_jwt()["jti"]
+        # Blacklist for 1 hour — matches access token lifetime
+        redis_client.setex(f"blacklist:{jti}", 3600, "true")
+    except Exception:
+        pass   # still logout cleanly even if Redis fails
     return {"success": True, "message": "Logged out successfully."}, 200

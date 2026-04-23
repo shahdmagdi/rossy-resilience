@@ -34,7 +34,7 @@ class Scan(db.Model):
     prob_normal     = db.Column(db.Float,                  nullable=False)
     model_version   = db.Column(db.String(50),             nullable=False)
     created_at      = db.Column(db.DateTime,               nullable=False, default=datetime.utcnow)
-
+    shared_with_doctor = db.Column(db.Boolean, nullable=False, default=False)
     patient = db.relationship("User", foreign_keys=[patient_id])
 
     def to_dict(self):
@@ -51,5 +51,6 @@ class Scan(db.Model):
                 "normal":    self.prob_normal,
             },
             "model_version": self.model_version,
+            "shared_with_doctor": self.shared_with_doctor,
             "created_at":    self.created_at.isoformat(),
         }
