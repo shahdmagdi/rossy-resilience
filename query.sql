@@ -1,13 +1,13 @@
---  BEGIN;
--- DELETE FROM users
--- WHERE email = 'maimahmoudhasan12345@gmail.com';
--- COMMIT;
+BEGIN;
+DELETE FROM users
+WHERE email = 'shahdmagdii22@gmail.com';
+COMMIT;
 -- -- -- -- SELECT email FROM users 
 -- -- -- -- WHERE email = 'Sehamzakaria1974@gmail.com';
-SELECT *
-FROM doctors d
--- JOIN users u ON d.doctor_id = u.user_id
-WHERE d.full_name = 'dr.basmala';
+-- SELECT *
+-- FROM doctors d
+-- -- JOIN users u ON d.doctor_id = u.user_id
+-- WHERE d.full_name = 'dr.basmala';
 
 
 

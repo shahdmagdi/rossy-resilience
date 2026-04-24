@@ -1,137 +1,98 @@
+
 # import os
-# import numpy as np
-# from PIL import Image
-# import tensorflow as tf
-# from tensorflow.keras import layers, Input, Model
-# from tensorflow.keras.applications import ResNet50
-# from tensorflow.keras.applications.resnet50 import preprocess_input
+# from gradio_client import Client, handle_file
 
-# ML_DIR = os.path.join(os.path.dirname(__file__), "..", "ml_model")
-
-# IMG_SIZE = 224
-
-# LABELS = {
-#     0: "benign",
-#     1: "malignant",
-#     2: "normal",
-# }
+# # ── HF Space URL ──────────────────────────────────────────
+# HF_SPACE_URL = os.getenv(
+#     "HF_SPACE_URL",
+#     "https://mai1222-rosy-resslience.hf.space"
+# )
 
 # MODEL_CONFIG = {
 #     "ultrasound": {
-#         "path":     os.path.join(ML_DIR, "breast_cancer_resnet50.keras"),
-#         "version":  "ultrasound_resnet50_v1",
-#         "img_size": IMG_SIZE,
+#         "version": "ultrasound_resnet50_v1",
 #     },
 #     # "mammogram": {
-#     #     "path":     os.path.join(ML_DIR, "mammogram_resnet50.keras"),
-#     #     "version":  "mammogram_resnet50_v1",
-#     #     "img_size": IMG_SIZE,
+#     #     "version": "mammogram_resnet50_v1",
 #     # },
 # }
 
-# _models = {
-#     "ultrasound": None,
-# }
+# # ── Client cache — created once, reused ──────────────────
+# _client = None
+
+
+# def get_client():
+#     """Creates Gradio client once and reuses it."""
+#     global _client
+#     if _client is None:
+#         # hf_token = os.getenv("HF_TOKEN")   # only needed if Space is private
+#         _client  = Client(HF_SPACE_URL)
+#         print(f"[ml_service] Connected to HF Space: {HF_SPACE_URL}")
+#     return _client
 
 
 # # ══════════════════════════════════════════════════════════
-# #  BUILD EXACT ARCHITECTURE + LOAD WEIGHTS
-# #  Rebuilds the exact same architecture the DL team used:
-# #  ResNet50 → GAP → Dense(256, relu) → Dropout(0.4) → Dense(3, softmax)
-# #  Then loads weights directly from the .keras file
-# # ══════════════════════════════════════════════════════════
-
-# def get_model(image_type):
-#     if image_type not in MODEL_CONFIG:
-#         raise ValueError(f"Unknown image type: '{image_type}'. Must be 'ultrasound' or 'mammogram'.")
-
-#     if _models[image_type] is None:
-#         config     = MODEL_CONFIG[image_type]
-#         model_path = config["path"]
-#         img_size   = config["img_size"]
-
-#         if not os.path.exists(model_path):
-#             raise FileNotFoundError(
-#                 f"Model file not found: {model_path}\n"
-#                 f"Please place the {image_type} model in the ml_model/ folder."
-#             )
-
-#         # 1. Rebuild exact same architecture as DL team
-#         base_model           = ResNet50(
-#             weights      = "imagenet",
-#             include_top  = False,
-#             input_shape  = (img_size, img_size, 3)
-#         )
-#         base_model.trainable = False
-
-#         inputs  = Input(shape=(img_size, img_size, 3))
-#         x       = base_model(inputs, training=False)
-#         x       = layers.GlobalAveragePooling2D()(x)
-#         x       = layers.Dense(256, activation="relu")(x)
-#         x       = layers.Dropout(0.4)(x)
-#         outputs = layers.Dense(3, activation="softmax")(x)
-#         model   = Model(inputs, outputs)
-
-#         model.compile(
-#             optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4),
-#             loss      = "categorical_crossentropy",
-#             metrics   = ["accuracy"]
-#         )
-
-#         # 2. Load the trained weights from the .keras file
-#         model.load_weights(model_path)
-
-#         _models[image_type] = model
-#         print(f"[ml_service] {image_type} model loaded successfully.")
-
-#     return _models[image_type]
-
-
-# # ══════════════════════════════════════════════════════════
-# #  PREPROCESS — identical to DL team's code
-# # ══════════════════════════════════════════════════════════
-
-# def preprocess_image(image_path, img_size):
-#     img = Image.open(image_path).convert("RGB")
-#     img = img.resize((img_size, img_size))
-
-#     arr = np.array(img, dtype=np.float32)
-#     arr = np.expand_dims(arr, axis=0)
-#     arr = preprocess_input(arr)
-
-#     return arr
-
-
-# # ══════════════════════════════════════════════════════════
-# #  PREDICT — identical to DL team's code
-# #  + adds probabilities for all 3 classes
+# #  PREDICT
+# #  Sends image file directly to HF Space — no base64 needed
 # # ══════════════════════════════════════════════════════════
 
 # def predict(image_path, image_type):
-#     config   = MODEL_CONFIG[image_type]
-#     model    = get_model(image_type)
-#     img_size = config["img_size"]
+#     """
+#     Calls the HF Space Gradio API with the image file.
 
-#     input_tensor    = preprocess_image(image_path, img_size)
-#     predictions     = model.predict(input_tensor, verbose=0)[0]
-#     predicted_index = int(np.argmax(predictions))
-#     predicted_class = LABELS[predicted_index]
-#     confidence      = float(np.max(predictions))
+#     Args:
+#         image_path (str): path to the temp image file
+#         image_type (str): "ultrasound" or "mammogram"
 
-#     probabilities = {
-#         LABELS[i]: round(float(predictions[i]) * 100, 2)
-#         for i in range(len(LABELS))
-#     }
+#     Returns:
+#         dict: {
+#             predicted_class, confidence,
+#             probabilities, model_version
+#         }
+#     """
+
+#     if image_type not in MODEL_CONFIG:
+#         raise ValueError(f"Unknown image type: '{image_type}'. Must be 'ultrasound' or 'mammogram'.")
+
+#     client = get_client()
+
+#     # Send image file directly — gradio_client handles upload automatically
+#     result = client.predict(
+#         image      = handle_file(image_path),
+#         api_name   = "/predict"
+#     )
+
+#     # result is the dict returned by HF Space predict function:
+#     # {"predicted_class": "malignant", "confidence (%)": 98.46}
+#     predicted_class = result.get("predicted_class")
+#     confidence      = result.get("confidence (%)")
 
 #     return {
 #         "predicted_class": predicted_class,
-#         "confidence":      round(confidence * 100, 2),
-#         "probabilities":   probabilities,
-#         "model_version":   config["version"],
+#         "confidence":      confidence,
+#         "probabilities":   _build_probabilities(predicted_class, confidence),
+#         "model_version":   MODEL_CONFIG[image_type]["version"],
 #     }
 
 
+# # ══════════════════════════════════════════════════════════
+# #  HELPER
+# # ══════════════════════════════════════════════════════════
 
+# def _build_probabilities(predicted_class, confidence):
+#     """
+#     HF Space only returns the top class confidence.
+#     We distribute the remaining % evenly across other classes.
+#     """
+#     all_classes   = ["benign", "malignant", "normal"]
+#     remaining     = round(100 - confidence, 2)
+#     other_classes = [c for c in all_classes if c != predicted_class]
+#     other_prob    = round(remaining / len(other_classes), 2)
+
+#     probabilities = {c: other_prob for c in all_classes}
+#     probabilities[predicted_class] = confidence
+
+#     return probabilities
 
 
 
@@ -140,68 +101,75 @@
 import os
 from gradio_client import Client, handle_file
 
-# ── HF Space URL ──────────────────────────────────────────
-HF_SPACE_URL = os.getenv(
-    "HF_SPACE_URL",
-    "https://mai1222-rosy-resslience.hf.space"
-)
-
-MODEL_CONFIG = {
-    "ultrasound": {
-        "version": "ultrasound_resnet50_v1",
-    },
-    # "mammogram": {
-    #     "version": "mammogram_resnet50_v1",
-    # },
+# ── HF Space URLs ─────────────────────────────────────────
+SPACE_URLS = {
+    "ultrasound":  os.getenv("HF_ULTRASOUND_URL",  "https://mai1222-rosy-resslience.hf.space"),
+    # "mammogram":   os.getenv("HF_MAMMOGRAM_URL"),   # set when mammogram space is ready
+    # "multimodal":  os.getenv("HF_MULTIMODAL_URL"),  # set when multimodal space is ready
 }
 
-# ── Client cache — created once, reused ──────────────────
-_client = None
+# ── Client cache — one client per space, created once ─────
+_clients = {}
+
+LABELS = {
+    0: "benign",
+    1: "malignant",
+    2: "normal",
+}
 
 
-def get_client():
-    """Creates Gradio client once and reuses it."""
-    global _client
-    if _client is None:
-        # hf_token = os.getenv("HF_TOKEN")   # only needed if Space is private
-        _client  = Client(HF_SPACE_URL)
-        print(f"[ml_service] Connected to HF Space: {HF_SPACE_URL}")
-    return _client
-
-
-# ══════════════════════════════════════════════════════════
-#  PREDICT
-#  Sends image file directly to HF Space — no base64 needed
-# ══════════════════════════════════════════════════════════
-
-def predict(image_path, image_type):
+def _get_client(space_key):
     """
-    Calls the HF Space Gradio API with the image file.
+    Returns a cached Gradio client for the given space.
+    Returns None if the space URL is not configured yet.
+    """
+    if space_key not in _clients:
+        url = SPACE_URLS.get(space_key)
+        if not url:
+            return None
+        _clients[space_key] = Client(url)
+        print(f"[ml_service] Connected to {space_key}: {url}")
+    return _clients[space_key]
+
+
+def _build_probabilities(predicted_class, confidence):
+    """Distributes remaining % evenly across other classes."""
+    all_classes   = ["benign", "malignant", "normal"]
+    remaining     = round(100 - confidence, 2)
+    other_classes = [c for c in all_classes if c != predicted_class]
+    other_prob    = round(remaining / len(other_classes), 2)
+    probs         = {c: other_prob for c in all_classes}
+    probs[predicted_class] = confidence
+    return probs
+
+
+# ══════════════════════════════════════════════════════════
+#  ULTRASOUND CLASSIFICATION
+#  Calls existing HF Space (rosy_resslience)
+# ══════════════════════════════════════════════════════════
+
+def predict_ultrasound(image_path):
+    """
+    Calls the ultrasound classification HF Space.
 
     Args:
-        image_path (str): path to the temp image file
-        image_type (str): "ultrasound" or "mammogram"
+        image_path (str): path to temp image file
 
     Returns:
-        dict: {
-            predicted_class, confidence,
-            probabilities, model_version
-        }
+        dict: { predicted_class, confidence, probabilities, model_version }
     """
+    client = _get_client("ultrasound")
+    if not client:
+        raise NotImplementedError(
+            "Ultrasound classification space is not configured. "
+            "Set HF_ULTRASOUND_URL in environment variables."
+        )
 
-    if image_type not in MODEL_CONFIG:
-        raise ValueError(f"Unknown image type: '{image_type}'. Must be 'ultrasound' or 'mammogram'.")
-
-    client = get_client()
-
-    # Send image file directly — gradio_client handles upload automatically
     result = client.predict(
-        image      = handle_file(image_path),
-        api_name   = "/predict"
+        image    = handle_file(image_path),
+        api_name = "/predict"
     )
 
-    # result is the dict returned by HF Space predict function:
-    # {"predicted_class": "malignant", "confidence (%)": 98.46}
     predicted_class = result.get("predicted_class")
     confidence      = result.get("confidence (%)")
 
@@ -209,25 +177,146 @@ def predict(image_path, image_type):
         "predicted_class": predicted_class,
         "confidence":      confidence,
         "probabilities":   _build_probabilities(predicted_class, confidence),
-        "model_version":   MODEL_CONFIG[image_type]["version"],
+        "model_version":   "ultrasound_resnet50_v1",
     }
 
 
 # ══════════════════════════════════════════════════════════
-#  HELPER
+#  MAMMOGRAM CLASSIFICATION
+#  ⚠️  Space not ready yet — placeholder
+#  Update api_name once DL team shares the Space
 # ══════════════════════════════════════════════════════════
 
-def _build_probabilities(predicted_class, confidence):
+def predict_mammogram(image_path):
     """
-    HF Space only returns the top class confidence.
-    We distribute the remaining % evenly across other classes.
+    Calls the mammogram classification HF Space.
+
+    ⚠️  PLACEHOLDER — update when DL team shares:
+        - HF Space URL → set HF_MAMMOGRAM_URL in .env
+        - api_name (confirm with: client.view_api())
+
+    Args:
+        image_path (str): path to temp image file
+
+    Returns:
+        dict: { predicted_class, confidence, probabilities, model_version }
     """
-    all_classes   = ["benign", "malignant", "normal"]
-    remaining     = round(100 - confidence, 2)
-    other_classes = [c for c in all_classes if c != predicted_class]
-    other_prob    = round(remaining / len(other_classes), 2)
+    client = _get_client("mammogram")
+    if not client:
+        raise NotImplementedError(
+            "Mammogram classification space is not ready yet. "
+            "Set HF_MAMMOGRAM_URL in environment variables when available."
+        )
 
-    probabilities = {c: other_prob for c in all_classes}
-    probabilities[predicted_class] = confidence
+    # ── Update api_name when DL team shares the Space ────
+    result = client.predict(
+        image    = handle_file(image_path),
+        api_name = "/predict"   # ← confirm with DL team
+    )
 
-    return probabilities
+    predicted_class = result.get("predicted_class")
+    confidence      = result.get("confidence (%)")
+
+    return {
+        "predicted_class": predicted_class,
+        "confidence":      confidence,
+        "probabilities":   _build_probabilities(predicted_class, confidence),
+        "model_version":   "mammogram_resnet50_v1",
+    }
+
+
+# ══════════════════════════════════════════════════════════
+#  MULTIMODAL CLASSIFICATION
+#  Called automatically when patient has BOTH ultrasound + mammogram
+#  ⚠️  Space not ready yet — placeholder
+# ══════════════════════════════════════════════════════════
+
+def predict_multimodal(ultrasound_path, mammogram_path):
+    """
+    Calls the multimodal HF Space using both images.
+    Triggered automatically after upload when patient has both scan types.
+
+    ⚠️  PLACEHOLDER — update when DL team shares:
+        - HF Space URL → set HF_MULTIMODAL_URL in .env
+        - Input param names (ultrasound + mammogram or different?)
+        - api_name
+
+    Args:
+        ultrasound_path (str): path or Cloudinary URL of ultrasound image
+        mammogram_path  (str): path or Cloudinary URL of mammogram image
+
+    Returns:
+        dict | None: { predicted_class, confidence, probabilities, model_version }
+                     None if space not configured — skipped silently
+    """
+    client = _get_client("multimodal")
+    if not client:
+        print("[ml_service] Multimodal space not configured yet — skipping.")
+        return None
+
+    try:
+        # ── Update param names when DL team shares the Space ──
+        result = client.predict(
+            ultrasound = handle_file(ultrasound_path),
+            mammogram  = handle_file(mammogram_path),
+            api_name   = "/predict"   # ← confirm with DL team
+        )
+
+        predicted_class = result.get("predicted_class")
+        confidence      = result.get("confidence (%)")
+
+        return {
+            "predicted_class": predicted_class,
+            "confidence":      confidence,
+            "probabilities":   _build_probabilities(predicted_class, confidence),
+            "model_version":   "multimodal_v1",
+        }
+
+    except Exception as e:
+        print(f"[ml_service] Multimodal prediction failed: {e}")
+        return None   # never block the main upload flow
+
+
+# ══════════════════════════════════════════════════════════
+#  ROUTE TO CORRECT MODEL
+#  Called by detection_service — picks the right function
+# ══════════════════════════════════════════════════════════
+
+def predict_detection(image_path, image_type):
+    """
+    Routes to the correct classification model based on image_type.
+
+    Args:
+        image_path (str): path to temp image file
+        image_type (str): "ultrasound" or "mammogram"
+
+    Returns:
+        dict: { predicted_class, confidence, probabilities, model_version }
+    """
+    if image_type == "ultrasound":
+        return predict_ultrasound(image_path)
+    elif image_type == "mammogram":
+        return predict_mammogram(image_path)
+    else:
+        raise ValueError(f"Unknown image_type: '{image_type}'. Must be 'ultrasound' or 'mammogram'.")
+
+
+# ══════════════════════════════════════════════════════════
+#  FALLBACK RECOMMENDATION
+#  Used until recommendation model is ready
+# ══════════════════════════════════════════════════════════
+
+def get_fallback_recommendation(predicted_class):
+    """
+    Returns a gentle recommendation text based on prediction.
+    Replace with actual recommendation model call when DL team shares it.
+    """
+    recommendations = {
+        "normal":    "Your scan looks good. Continue with regular check-ups as advised by your doctor.",
+        "benign":    "Your scan shows some findings. Please follow up with your doctor for further guidance.",
+        "malignant": "Your scan requires medical attention. Please contact your doctor as soon as possible.",
+    }
+    return recommendations.get(
+        predicted_class,
+        "Please consult your doctor to discuss your scan results."
+    )
