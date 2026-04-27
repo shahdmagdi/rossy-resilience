@@ -104,7 +104,7 @@ from gradio_client import Client, handle_file
 # ── HF Space URLs ─────────────────────────────────────────
 SPACE_URLS = {
     "ultrasound":  os.getenv("HF_ULTRASOUND_URL",  "https://mai1222-rosy-resslience.hf.space"),
-    # "mammogram":   os.getenv("HF_MAMMOGRAM_URL"),   # set when mammogram space is ready
+    "mammogram":   os.getenv("HF_MAMMOGRAM_URL"),   # set when mammogram space is ready
     # "multimodal":  os.getenv("HF_MULTIMODAL_URL"),  # set when multimodal space is ready
 }
 

@@ -215,6 +215,9 @@ from flask_cors import CORS
 from flask_mail import Mail
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 
 import os
 import redis
@@ -296,8 +299,9 @@ def create_app():
     from models.password_reset_token import PasswordResetToken
     # from models.scan import Scan
     from models.detection_scan import DetectionScan, MultimodalResult
+    from models.mri_scan import MriScan
 
-    # ================= REDIS USAGE EXAMPLE (OPTIONAL SAFETY) =================
+    # ================= REDIS USAGE =================
     @jwt.token_in_blocklist_loader
     def check_if_token_revoked(jwt_header, jwt_payload):
         jti = jwt_payload["jti"]
@@ -314,6 +318,7 @@ def create_app():
     from routes.assignment import assignment_bp
     from routes.scan import detection_bp
     from routes.profile import profile_bp
+    from routes.mri import mri_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
@@ -322,6 +327,7 @@ def create_app():
     # app.register_blueprint(scan_bp)
     app.register_blueprint(detection_bp)
     app.register_blueprint(profile_bp)
+    app.register_blueprint(mri_bp)
 
     # DEBUG: Print all routes
     print("\n=== REGISTERED ROUTES ===")
