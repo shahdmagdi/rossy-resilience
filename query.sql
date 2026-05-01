@@ -1,6 +1,6 @@
 BEGIN;
 DELETE FROM users
-WHERE email = 'shahdmagdii22@gmail.com';
+WHERE email = 'maimahmoudhasan12345@gmail.com';
 COMMIT;
 -- -- -- -- SELECT email FROM users 
 -- -- -- -- WHERE email = 'Sehamzakaria1974@gmail.com';

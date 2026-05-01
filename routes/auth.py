@@ -177,6 +177,371 @@
 
 
 
+# from flask import Blueprint, request, jsonify, make_response
+# from app import limiter
+# from services.auth_service import (
+#     signup_patient,
+#     verify_email,
+#     resend_verification_code,
+# )
+# from services.doctor_auth_service import (
+#     signup_doctor,
+#     verify_doctor_email,
+#     resend_doctor_verification_code,
+# )
+# from flask_jwt_extended import (
+#     verify_jwt_in_request,
+#     get_jwt_identity,
+#     create_access_token
+# )
+
+# from services.login_service import login_user, logout_user
+# from models import User, UserRole
+# from models.doctor import Doctor, VerificationStatus
+# from services.account_service import forgot_password, verify_reset_code, resend_reset_code
+
+# auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
+
+# SIGNUP_COOKIE_NAME     = "signup_session"
+# SIGNUP_COOKIE_MAX_AGE  = 60 * 30
+# ACCESS_COOKIE_MAX_AGE  = 3600
+# REFRESH_COOKIE_MAX_AGE = 2592000
+# RESET_COOKIE_NAME      = "reset_session"
+# RESET_COOKIE_MAX_AGE   = 60 * 20
+
+
+# def _set_jwt_cookies(res, access_token, refresh_token):
+#     res.set_cookie("access_token",  access_token,  max_age=ACCESS_COOKIE_MAX_AGE,  httponly=True, samesite="Lax", secure=False)
+#     res.set_cookie("refresh_token", refresh_token, max_age=REFRESH_COOKIE_MAX_AGE, httponly=True, samesite="Lax", secure=False)
+#     return res
+
+
+# @auth_bp.route("/patient/signup", methods=["POST", "OPTIONS"])
+# @limiter.limit("5 per minute; 20 per hour")
+# def patient_signup():
+#     data = request.get_json(force=True, silent=True)
+#     if not data or not isinstance(data, dict):
+#         return jsonify({"success": False, "message": "No data provided."}), 400
+#     response, status, user_id = signup_patient(data)
+#     res = make_response(jsonify(response), status)
+#     if user_id:
+#         res.set_cookie(SIGNUP_COOKIE_NAME, value=user_id, max_age=SIGNUP_COOKIE_MAX_AGE, httponly=True, samesite="Lax", secure=False)
+#     return res
+
+
+# @auth_bp.route("/patient/verify-email", methods=["POST", "OPTIONS"])
+# @limiter.limit("5 per minute; 10 per hour")
+# def patient_verify_email():
+#     data = request.get_json(force=True, silent=True)
+#     if not data or not isinstance(data, dict):
+#         return jsonify({"success": False, "message": "No data provided."}), 400
+#     user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
+#     code    = data.get("code", "").strip()
+#     response, status, should_clear_cookie = verify_email(code, user_id)
+#     res = make_response(jsonify(response), status)
+#     if should_clear_cookie:
+#         res.delete_cookie(SIGNUP_COOKIE_NAME)
+#         _set_jwt_cookies(res, response["access_token"], response["refresh_token"])
+#     return res
+
+
+# @auth_bp.route("/patient/resend-code", methods=["POST", "OPTIONS"])
+# @limiter.limit("3 per minute; 5 per hour")
+# def patient_resend_code():
+#     user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
+#     response, status = resend_verification_code(user_id)
+#     return jsonify(response), status
+
+
+# @auth_bp.route("/doctor/signup", methods=["POST", "OPTIONS"])
+# @limiter.limit("3 per minute; 10 per hour")
+# def doctor_signup():
+#     data = request.get_json(force=True, silent=True)
+#     if not data or not isinstance(data, dict):
+#         return jsonify({"success": False, "message": "No data provided."}), 400
+#     response, status, user_id = signup_doctor(data)
+#     res = make_response(jsonify(response), status)
+#     if user_id:
+#         res.set_cookie(SIGNUP_COOKIE_NAME, value=user_id, max_age=SIGNUP_COOKIE_MAX_AGE, httponly=True, samesite="Lax", secure=False)
+#     return res
+
+
+# @auth_bp.route("/doctor/verify-email", methods=["POST", "OPTIONS"])
+# @limiter.limit("5 per minute; 10 per hour")
+# def doctor_verify_email():
+#     data = request.get_json(force=True, silent=True)
+#     if not data or not isinstance(data, dict):
+#         return jsonify({"success": False, "message": "No data provided."}), 400
+#     user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
+#     code    = data.get("code", "").strip()
+#     response, status, should_clear_cookie = verify_doctor_email(code, user_id)
+#     res = make_response(jsonify(response), status)
+#     if should_clear_cookie:
+#         res.delete_cookie(SIGNUP_COOKIE_NAME)
+#     return res
+
+
+# @auth_bp.route("/doctor/resend-code", methods=["POST", "OPTIONS"])
+# @limiter.limit("3 per minute; 5 per hour")
+# def doctor_resend_code():
+#     user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
+#     response, status = resend_doctor_verification_code(user_id)
+#     return jsonify(response), status
+
+
+# @auth_bp.route("/login", methods=["POST", "OPTIONS"])
+# @limiter.limit("10 per minute; 50 per hour")
+# def login():
+#     # Try multiple ways to get the data
+#     data = request.get_json(force=True, silent=True)
+    
+#     if not data:
+#         # fallback: try reading raw body
+#         try:
+#             import json
+#             data = json.loads(request.data.decode('utf-8'))
+#         except Exception:
+#             data = None
+
+#     if not data or not isinstance(data, dict):
+#         return jsonify({"success": False, "message": "No data provided."}), 400
+
+#     response, status, tokens = login_user(data)
+#     res = make_response(jsonify(response), status)
+#     if tokens:
+#         _set_jwt_cookies(res, *tokens)
+#     return res
+# # ── POST /api/auth/refresh ────────────────────────────────
+# @auth_bp.route("/refresh", methods=["POST", "OPTIONS"])
+# def refresh_token():
+#     try:
+#         verify_jwt_in_request(refresh=True, locations=["cookies"])
+#         user_id      = get_jwt_identity()
+#         access_token = create_access_token(identity=user_id)
+
+#         res = make_response(jsonify({
+#             "success": True,
+#             "message": "Token refreshed."
+#         }), 200)
+
+#         res.set_cookie(
+#             "access_token",
+#             access_token,
+#             max_age  = ACCESS_COOKIE_MAX_AGE,
+#             httponly = True,
+#             samesite = "Lax",
+#             secure   = False,   # ← change to True when deployed
+#         )
+#         return res
+
+#     except Exception:
+#         return jsonify({
+#             "success": False,
+#             "message": "Session expired. Please log in again."
+#         }), 
+
+# # @auth_bp.route("/logout", methods=["POST", "OPTIONS"])
+# # def logout():
+# #     response, status = logout_user()
+# #     res = make_response(jsonify(response), status)
+# #     res.delete_cookie("access_token")
+# #     res.delete_cookie("refresh_token")
+# #     return res
+
+# @auth_bp.route("/logout", methods=["POST", "OPTIONS"])
+# def logout():
+#     # ← add this so logout_user() can read the token and blacklist it
+#     try:
+#         verify_jwt_in_request(locations=["cookies"])
+#     except Exception:
+#         pass  # still logout cleanly even if token already expired
+
+#     response, status = logout_user()
+#     res = make_response(jsonify(response), status)
+#     res.delete_cookie("access_token")
+#     res.delete_cookie("refresh_token")
+#     return res
+
+# @auth_bp.route("/signup", methods=["POST", "OPTIONS"])
+# @limiter.limit("5 per minute; 20 per hour")
+# def unified_signup():
+#     data = request.get_json(force=True, silent=True)
+#     if not data or not isinstance(data, dict):
+#         return jsonify({"success": False, "message": "No data provided."}), 400
+
+#     role = data.get("role", "patient").lower()
+
+#     if "name" in data and "full_name" not in data:
+#         data["full_name"] = data.pop("name")
+
+#     if "confirm_password" not in data:
+#         data["confirm_password"] = data.get("password", "")
+
+#     if role == "doctor":
+#         response, status, user_id = signup_doctor(data)
+#     else:
+#         response, status, user_id = signup_patient(data)
+
+#     res = make_response(jsonify(response), status)
+#     if user_id:
+#         res.set_cookie(
+#             SIGNUP_COOKIE_NAME,
+#             value=user_id,
+#             max_age=SIGNUP_COOKIE_MAX_AGE,
+#             httponly=True,
+#             samesite="Lax",
+#             secure=False,
+#         )
+#     return res
+
+
+# @auth_bp.route("/verify-email", methods=["POST", "OPTIONS"])
+# @limiter.limit("5 per minute; 10 per hour")
+# def unified_verify_email():
+#     data = request.get_json(force=True, silent=True)
+#     if not data or not isinstance(data, dict):
+#         return jsonify({"success": False, "message": "No data provided."}), 400
+
+#     code    = data.get("code", "").strip()
+#     user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
+
+#     if not user_id:
+#         return jsonify({"success": False, "message": "Session expired. Please sign up again."}), 401
+
+#     user = User.query.get(user_id)
+#     if not user:
+#         return jsonify({"success": False, "message": "User not found."}), 404
+
+#     if user.role == UserRole.doctor:
+#         response, status, should_clear_cookie = verify_doctor_email(code, user_id)
+#     else:
+#         response, status, should_clear_cookie = verify_email(code, user_id)
+
+#     res = make_response(jsonify(response), status)
+
+#     if should_clear_cookie:
+#         res.delete_cookie(SIGNUP_COOKIE_NAME)
+#         if user and user.role == UserRole.patient:
+#             _set_jwt_cookies(res, response.get("access_token"), response.get("refresh_token"))
+
+#     return res
+
+
+# @auth_bp.route("/resend-verification", methods=["POST", "OPTIONS"])
+# @limiter.limit("3 per minute; 5 per hour")
+# def unified_resend_verification():
+#     user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
+#     if not user_id:
+#         return jsonify({"success": False, "message": "Session expired. Please sign up again."}), 401
+
+#     user = User.query.get(user_id)
+#     if user and user.role == UserRole.doctor:
+#         response, status = resend_doctor_verification_code(user_id)
+#     else:
+#         response, status = resend_verification_code(user_id)
+
+#     return jsonify(response), status
+
+
+# @auth_bp.route("/forgot-password", methods=["POST", "OPTIONS"])
+# @limiter.limit("3 per minute; 5 per hour")
+# def auth_forgot_password():
+#     data = request.get_json(force=True, silent=True)
+#     if not data or not isinstance(data, dict):
+#         return jsonify({"success": False, "message": "No data provided."}), 400
+
+#     response, status, user_id = forgot_password(data)
+#     res = make_response(jsonify(response), status)
+
+#     if user_id:
+#         res.set_cookie(
+#             RESET_COOKIE_NAME,
+#             value=user_id,
+#             max_age=RESET_COOKIE_MAX_AGE,
+#             httponly=True,
+#             samesite="Lax",
+#             secure=False,
+#         )
+#     return res
+
+
+# @auth_bp.route("/reset-password", methods=["POST", "OPTIONS"])
+# @limiter.limit("5 per minute; 10 per hour")
+# def auth_reset_password():
+#     data = request.get_json(force=True, silent=True)
+#     if not data or not isinstance(data, dict):
+#         return jsonify({"success": False, "message": "No data provided."}), 400
+
+#     user_id = request.cookies.get(RESET_COOKIE_NAME)
+#     response, status, should_clear_cookie = verify_reset_code(data, user_id)
+#     res = make_response(jsonify(response), status)
+
+#     if should_clear_cookie:
+#         res.delete_cookie(RESET_COOKIE_NAME)
+
+#     return res
+
+
+# @auth_bp.route("/debug-route", methods=["GET"])
+# def debug_route():
+#     return jsonify({"message": "Auth blueprint is working!", "endpoint": "/api/auth/debug-route"}), 200
+
+
+# @auth_bp.route("/doctor/approval-status", methods=["GET", "OPTIONS"])
+# def doctor_approval_status():
+#     user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
+#     if not user_id:
+#         return jsonify({"success": False, "message": "Session expired."}), 401
+
+#     user = User.query.get(user_id)
+#     if not user:
+#         return jsonify({"success": False, "message": "User not found."}), 404
+
+#     if user.role != UserRole.doctor:
+#         return jsonify({"success": False, "message": "Not a doctor."}), 403
+
+#     doctor = Doctor.query.filter_by(doctor_id=user_id).first()
+#     if not doctor:
+#         return jsonify({"success": False, "message": "Doctor profile not found."}), 404
+
+#     return jsonify({
+#         "success": True,
+#         "user": {
+#             "user_id":             str(user.user_id),
+#             "email":               user.email,
+#             "full_name":           user.full_name,
+#             "role":                "doctor",
+#             "verification_status": doctor.verification_status.value,
+#             "is_approved":         doctor.verification_status == VerificationStatus.approved,
+#         }
+#     }), 200
+
+
+# @auth_bp.route("/verification-status", methods=["GET", "OPTIONS"])
+# def verification_status():
+#     user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
+#     if not user_id:
+#         return jsonify({"success": False, "message": "Session expired."}), 401
+
+#     user = User.query.get(user_id)
+#     if not user:
+#         return jsonify({"success": False, "message": "User not found."}), 404
+
+#     return jsonify({
+#         "success": True,
+#         "user": {
+#             "user_id":        str(user.user_id),
+#             "email":          user.email,
+#             "full_name":      user.full_name,
+#             "role":           user.role.value,
+#             "email_verified": user.email_verified,
+#             "is_active":      user.is_active,
+#         }
+#     }), 200
+
+
+
+
 from flask import Blueprint, request, jsonify, make_response
 from app import limiter
 from services.auth_service import (
@@ -192,10 +557,11 @@ from services.doctor_auth_service import (
 from flask_jwt_extended import (
     verify_jwt_in_request,
     get_jwt_identity,
-    create_access_token
+    get_jwt,
+    create_access_token,
 )
 
-from services.login_service import login_user, logout_user
+from services.login_service import login_user, logout_user, accept_patient_consent
 from models import User, UserRole
 from models.doctor import Doctor, VerificationStatus
 from services.account_service import forgot_password, verify_reset_code, resend_reset_code
@@ -215,6 +581,10 @@ def _set_jwt_cookies(res, access_token, refresh_token):
     res.set_cookie("refresh_token", refresh_token, max_age=REFRESH_COOKIE_MAX_AGE, httponly=True, samesite="Lax", secure=False)
     return res
 
+
+# ══════════════════════════════════════════════════════════
+#  PATIENT SIGNUP / VERIFY
+# ══════════════════════════════════════════════════════════
 
 @auth_bp.route("/patient/signup", methods=["POST", "OPTIONS"])
 @limiter.limit("5 per minute; 20 per hour")
@@ -253,6 +623,45 @@ def patient_resend_code():
     return jsonify(response), status
 
 
+# ══════════════════════════════════════════════════════════
+#  PATIENT CONSENT
+#  Frontend flow:
+#    1. POST /api/auth/login  → 403 + { consent_required: true, temp_token }
+#    2. Show T&C screen
+#    3. POST /api/auth/patient/consent
+#         Authorization: Bearer <temp_token>
+#       → 200 + full JWT cookies set
+# ══════════════════════════════════════════════════════════
+
+@auth_bp.route("/patient/consent", methods=["POST", "OPTIONS"])
+@limiter.limit("5 per minute; 10 per hour")
+def patient_consent():
+    # The temp token must be sent in the Authorization header
+    # (it was returned in the JSON body, not set as a cookie)
+    try:
+        verify_jwt_in_request(locations=["headers"])
+    except Exception:
+        return jsonify({
+            "success": False,
+            "message": "Consent token missing or expired. Please log in again.",
+        }), 401
+
+    user_id    = get_jwt_identity()
+    jwt_claims = get_jwt()
+
+    response, status, tokens = accept_patient_consent(user_id, jwt_claims)
+    res = make_response(jsonify(response), status)
+
+    if tokens:
+        _set_jwt_cookies(res, *tokens)
+
+    return res
+
+
+# ══════════════════════════════════════════════════════════
+#  DOCTOR SIGNUP / VERIFY
+# ══════════════════════════════════════════════════════════
+
 @auth_bp.route("/doctor/signup", methods=["POST", "OPTIONS"])
 @limiter.limit("3 per minute; 10 per hour")
 def doctor_signup():
@@ -289,204 +698,6 @@ def doctor_resend_code():
     return jsonify(response), status
 
 
-@auth_bp.route("/login", methods=["POST", "OPTIONS"])
-@limiter.limit("10 per minute; 50 per hour")
-def login():
-    # Try multiple ways to get the data
-    data = request.get_json(force=True, silent=True)
-    
-    if not data:
-        # fallback: try reading raw body
-        try:
-            import json
-            data = json.loads(request.data.decode('utf-8'))
-        except Exception:
-            data = None
-
-    if not data or not isinstance(data, dict):
-        return jsonify({"success": False, "message": "No data provided."}), 400
-
-    response, status, tokens = login_user(data)
-    res = make_response(jsonify(response), status)
-    if tokens:
-        _set_jwt_cookies(res, *tokens)
-    return res
-# ── POST /api/auth/refresh ────────────────────────────────
-@auth_bp.route("/refresh", methods=["POST", "OPTIONS"])
-def refresh_token():
-    try:
-        verify_jwt_in_request(refresh=True, locations=["cookies"])
-        user_id      = get_jwt_identity()
-        access_token = create_access_token(identity=user_id)
-
-        res = make_response(jsonify({
-            "success": True,
-            "message": "Token refreshed."
-        }), 200)
-
-        res.set_cookie(
-            "access_token",
-            access_token,
-            max_age  = ACCESS_COOKIE_MAX_AGE,
-            httponly = True,
-            samesite = "Lax",
-            secure   = False,   # ← change to True when deployed
-        )
-        return res
-
-    except Exception:
-        return jsonify({
-            "success": False,
-            "message": "Session expired. Please log in again."
-        }), 
-
-# @auth_bp.route("/logout", methods=["POST", "OPTIONS"])
-# def logout():
-#     response, status = logout_user()
-#     res = make_response(jsonify(response), status)
-#     res.delete_cookie("access_token")
-#     res.delete_cookie("refresh_token")
-#     return res
-
-@auth_bp.route("/logout", methods=["POST", "OPTIONS"])
-def logout():
-    # ← add this so logout_user() can read the token and blacklist it
-    try:
-        verify_jwt_in_request(locations=["cookies"])
-    except Exception:
-        pass  # still logout cleanly even if token already expired
-
-    response, status = logout_user()
-    res = make_response(jsonify(response), status)
-    res.delete_cookie("access_token")
-    res.delete_cookie("refresh_token")
-    return res
-
-@auth_bp.route("/signup", methods=["POST", "OPTIONS"])
-@limiter.limit("5 per minute; 20 per hour")
-def unified_signup():
-    data = request.get_json(force=True, silent=True)
-    if not data or not isinstance(data, dict):
-        return jsonify({"success": False, "message": "No data provided."}), 400
-
-    role = data.get("role", "patient").lower()
-
-    if "name" in data and "full_name" not in data:
-        data["full_name"] = data.pop("name")
-
-    if "confirm_password" not in data:
-        data["confirm_password"] = data.get("password", "")
-
-    if role == "doctor":
-        response, status, user_id = signup_doctor(data)
-    else:
-        response, status, user_id = signup_patient(data)
-
-    res = make_response(jsonify(response), status)
-    if user_id:
-        res.set_cookie(
-            SIGNUP_COOKIE_NAME,
-            value=user_id,
-            max_age=SIGNUP_COOKIE_MAX_AGE,
-            httponly=True,
-            samesite="Lax",
-            secure=False,
-        )
-    return res
-
-
-@auth_bp.route("/verify-email", methods=["POST", "OPTIONS"])
-@limiter.limit("5 per minute; 10 per hour")
-def unified_verify_email():
-    data = request.get_json(force=True, silent=True)
-    if not data or not isinstance(data, dict):
-        return jsonify({"success": False, "message": "No data provided."}), 400
-
-    code    = data.get("code", "").strip()
-    user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
-
-    if not user_id:
-        return jsonify({"success": False, "message": "Session expired. Please sign up again."}), 401
-
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"success": False, "message": "User not found."}), 404
-
-    if user.role == UserRole.doctor:
-        response, status, should_clear_cookie = verify_doctor_email(code, user_id)
-    else:
-        response, status, should_clear_cookie = verify_email(code, user_id)
-
-    res = make_response(jsonify(response), status)
-
-    if should_clear_cookie:
-        res.delete_cookie(SIGNUP_COOKIE_NAME)
-        if user and user.role == UserRole.patient:
-            _set_jwt_cookies(res, response.get("access_token"), response.get("refresh_token"))
-
-    return res
-
-
-@auth_bp.route("/resend-verification", methods=["POST", "OPTIONS"])
-@limiter.limit("3 per minute; 5 per hour")
-def unified_resend_verification():
-    user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
-    if not user_id:
-        return jsonify({"success": False, "message": "Session expired. Please sign up again."}), 401
-
-    user = User.query.get(user_id)
-    if user and user.role == UserRole.doctor:
-        response, status = resend_doctor_verification_code(user_id)
-    else:
-        response, status = resend_verification_code(user_id)
-
-    return jsonify(response), status
-
-
-@auth_bp.route("/forgot-password", methods=["POST", "OPTIONS"])
-@limiter.limit("3 per minute; 5 per hour")
-def auth_forgot_password():
-    data = request.get_json(force=True, silent=True)
-    if not data or not isinstance(data, dict):
-        return jsonify({"success": False, "message": "No data provided."}), 400
-
-    response, status, user_id = forgot_password(data)
-    res = make_response(jsonify(response), status)
-
-    if user_id:
-        res.set_cookie(
-            RESET_COOKIE_NAME,
-            value=user_id,
-            max_age=RESET_COOKIE_MAX_AGE,
-            httponly=True,
-            samesite="Lax",
-            secure=False,
-        )
-    return res
-
-
-@auth_bp.route("/reset-password", methods=["POST", "OPTIONS"])
-@limiter.limit("5 per minute; 10 per hour")
-def auth_reset_password():
-    data = request.get_json(force=True, silent=True)
-    if not data or not isinstance(data, dict):
-        return jsonify({"success": False, "message": "No data provided."}), 400
-
-    user_id = request.cookies.get(RESET_COOKIE_NAME)
-    response, status, should_clear_cookie = verify_reset_code(data, user_id)
-    res = make_response(jsonify(response), status)
-
-    if should_clear_cookie:
-        res.delete_cookie(RESET_COOKIE_NAME)
-
-    return res
-
-
-@auth_bp.route("/debug-route", methods=["GET"])
-def debug_route():
-    return jsonify({"message": "Auth blueprint is working!", "endpoint": "/api/auth/debug-route"}), 200
-
-
 @auth_bp.route("/doctor/approval-status", methods=["GET", "OPTIONS"])
 def doctor_approval_status():
     user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
@@ -517,6 +728,205 @@ def doctor_approval_status():
     }), 200
 
 
+# ══════════════════════════════════════════════════════════
+#  LOGIN / LOGOUT / REFRESH
+# ══════════════════════════════════════════════════════════
+
+@auth_bp.route("/login", methods=["POST", "OPTIONS"])
+@limiter.limit("10 per minute; 50 per hour")
+def login():
+    data = request.get_json(force=True, silent=True)
+
+    if not data:
+        try:
+            import json
+            data = json.loads(request.data.decode("utf-8"))
+        except Exception:
+            data = None
+
+    if not data or not isinstance(data, dict):
+        return jsonify({"success": False, "message": "No data provided."}), 400
+
+    response, status, tokens = login_user(data)
+    res = make_response(jsonify(response), status)
+
+    if tokens:
+        _set_jwt_cookies(res, *tokens)
+
+    return res
+
+
+@auth_bp.route("/refresh", methods=["POST", "OPTIONS"])
+def refresh_token():
+    try:
+        verify_jwt_in_request(refresh=True, locations=["cookies"])
+        user_id      = get_jwt_identity()
+        access_token = create_access_token(identity=user_id)
+
+        res = make_response(jsonify({"success": True, "message": "Token refreshed."}), 200)
+        res.set_cookie(
+            "access_token",
+            access_token,
+            max_age  = ACCESS_COOKIE_MAX_AGE,
+            httponly = True,
+            samesite = "Lax",
+            secure   = False,   # ← True in production
+        )
+        return res
+
+    except Exception:
+        return jsonify({
+            "success": False,
+            "message": "Session expired. Please log in again.",
+        }), 401
+
+
+@auth_bp.route("/logout", methods=["POST", "OPTIONS"])
+def logout():
+    try:
+        verify_jwt_in_request(locations=["cookies"])
+    except Exception:
+        pass  # still logout cleanly even if token already expired
+
+    response, status = logout_user()
+    res = make_response(jsonify(response), status)
+    res.delete_cookie("access_token")
+    res.delete_cookie("refresh_token")
+    return res
+
+
+# ══════════════════════════════════════════════════════════
+#  UNIFIED SIGNUP / VERIFY (role-agnostic)
+# ══════════════════════════════════════════════════════════
+
+@auth_bp.route("/signup", methods=["POST", "OPTIONS"])
+@limiter.limit("5 per minute; 20 per hour")
+def unified_signup():
+    data = request.get_json(force=True, silent=True)
+    if not data or not isinstance(data, dict):
+        return jsonify({"success": False, "message": "No data provided."}), 400
+
+    role = data.get("role", "patient").lower()
+
+    if "name" in data and "full_name" not in data:
+        data["full_name"] = data.pop("name")
+
+    if "confirm_password" not in data:
+        data["confirm_password"] = data.get("password", "")
+
+    if role == "doctor":
+        response, status, user_id = signup_doctor(data)
+    else:
+        response, status, user_id = signup_patient(data)
+
+    res = make_response(jsonify(response), status)
+    if user_id:
+        res.set_cookie(
+            SIGNUP_COOKIE_NAME,
+            value    = user_id,
+            max_age  = SIGNUP_COOKIE_MAX_AGE,
+            httponly = True,
+            samesite = "Lax",
+            secure   = False,
+        )
+    return res
+
+
+@auth_bp.route("/verify-email", methods=["POST", "OPTIONS"])
+@limiter.limit("5 per minute; 10 per hour")
+def unified_verify_email():
+    data = request.get_json(force=True, silent=True)
+    if not data or not isinstance(data, dict):
+        return jsonify({"success": False, "message": "No data provided."}), 400
+
+    code    = data.get("code", "").strip()
+    user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
+
+    if not user_id:
+        return jsonify({"success": False, "message": "Session expired. Please sign up again."}), 401
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"success": False, "message": "User not found."}), 404
+
+    if user.role == UserRole.doctor:
+        response, status, should_clear_cookie = verify_doctor_email(code, user_id)
+    else:
+        response, status, should_clear_cookie = verify_email(code, user_id)
+
+    res = make_response(jsonify(response), status)
+
+    if should_clear_cookie:
+        res.delete_cookie(SIGNUP_COOKIE_NAME)
+        if user.role == UserRole.patient:
+            _set_jwt_cookies(res, response.get("access_token"), response.get("refresh_token"))
+
+    return res
+
+
+@auth_bp.route("/resend-verification", methods=["POST", "OPTIONS"])
+@limiter.limit("3 per minute; 5 per hour")
+def unified_resend_verification():
+    user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
+    if not user_id:
+        return jsonify({"success": False, "message": "Session expired. Please sign up again."}), 401
+
+    user = User.query.get(user_id)
+    if user and user.role == UserRole.doctor:
+        response, status = resend_doctor_verification_code(user_id)
+    else:
+        response, status = resend_verification_code(user_id)
+
+    return jsonify(response), status
+
+
+# ══════════════════════════════════════════════════════════
+#  PASSWORD RESET
+# ══════════════════════════════════════════════════════════
+
+@auth_bp.route("/forgot-password", methods=["POST", "OPTIONS"])
+@limiter.limit("3 per minute; 5 per hour")
+def auth_forgot_password():
+    data = request.get_json(force=True, silent=True)
+    if not data or not isinstance(data, dict):
+        return jsonify({"success": False, "message": "No data provided."}), 400
+
+    response, status, user_id = forgot_password(data)
+    res = make_response(jsonify(response), status)
+
+    if user_id:
+        res.set_cookie(
+            RESET_COOKIE_NAME,
+            value    = user_id,
+            max_age  = RESET_COOKIE_MAX_AGE,
+            httponly = True,
+            samesite = "Lax",
+            secure   = False,
+        )
+    return res
+
+
+@auth_bp.route("/reset-password", methods=["POST", "OPTIONS"])
+@limiter.limit("5 per minute; 10 per hour")
+def auth_reset_password():
+    data = request.get_json(force=True, silent=True)
+    if not data or not isinstance(data, dict):
+        return jsonify({"success": False, "message": "No data provided."}), 400
+
+    user_id = request.cookies.get(RESET_COOKIE_NAME)
+    response, status, should_clear_cookie = verify_reset_code(data, user_id)
+    res = make_response(jsonify(response), status)
+
+    if should_clear_cookie:
+        res.delete_cookie(RESET_COOKIE_NAME)
+
+    return res
+
+
+# ══════════════════════════════════════════════════════════
+#  MISC
+# ══════════════════════════════════════════════════════════
+
 @auth_bp.route("/verification-status", methods=["GET", "OPTIONS"])
 def verification_status():
     user_id = request.cookies.get(SIGNUP_COOKIE_NAME)
@@ -538,3 +948,8 @@ def verification_status():
             "is_active":      user.is_active,
         }
     }), 200
+
+
+@auth_bp.route("/debug-route", methods=["GET"])
+def debug_route():
+    return jsonify({"message": "Auth blueprint is working!", "endpoint": "/api/auth/debug-route"}), 200

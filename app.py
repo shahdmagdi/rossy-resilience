@@ -300,6 +300,7 @@ def create_app():
     # from models.scan import Scan
     from models.detection_scan import DetectionScan, MultimodalResult
     from models.mri_scan import MriScan
+    
 
     # ================= REDIS USAGE =================
     @jwt.token_in_blocklist_loader
@@ -319,15 +320,20 @@ def create_app():
     from routes.scan import detection_bp
     from routes.profile import profile_bp
     from routes.mri import mri_bp
+    from routes.segmentation import segmentation_bp
+    from routes.patient import patient_bp
+
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(assignment_bp)
+    app.register_blueprint(patient_bp)
     # app.register_blueprint(scan_bp)
     app.register_blueprint(detection_bp)
     app.register_blueprint(profile_bp)
     app.register_blueprint(mri_bp)
+    app.register_blueprint(segmentation_bp)
 
     # DEBUG: Print all routes
     print("\n=== REGISTERED ROUTES ===")
