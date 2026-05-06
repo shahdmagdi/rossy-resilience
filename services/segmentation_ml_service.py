@@ -4,7 +4,7 @@ from gradio_client import Client, handle_file
 # ── HF Space URL ──────────────────────────────────────────
 SEGMENTATION_SPACE_URLS = {
     "ultrasound": os.getenv("HF_ULTRASOUND_SEG_URL", "https://mai1222-ultrasound-segmentation.hf.space"),
-#     "mammogram":  os.getenv("HF_MAMMOGRAM_SEG_URL"),  # set when ready
+     "mammogram":  os.getenv("HF_MAMMOGRAM_SEG_URL"),  
 }
 
 _clients = {}
