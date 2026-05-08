@@ -300,6 +300,8 @@ def create_app():
     # from models.scan import Scan
     from models.detection_scan import DetectionScan, MultimodalResult
     from models.mri_scan import MriScan
+    from models.notification import Notification
+    from models.doctor_notes import DoctorNote
     
 
     # ================= REDIS USAGE =================
@@ -322,6 +324,8 @@ def create_app():
     from routes.mri import mri_bp
     from routes.segmentation import segmentation_bp
     from routes.patient import patient_bp
+    from routes.notes import notes_bp
+    from routes.notification import notification_bp
 
 
     app.register_blueprint(auth_bp)
@@ -334,6 +338,8 @@ def create_app():
     app.register_blueprint(profile_bp)
     app.register_blueprint(mri_bp)
     app.register_blueprint(segmentation_bp)
+    app.register_blueprint(notes_bp)
+    app.register_blueprint(notification_bp)
 
     # DEBUG: Print all routes
     print("\n=== REGISTERED ROUTES ===")

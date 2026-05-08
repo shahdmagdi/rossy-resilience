@@ -11,6 +11,14 @@ from services.assignment_service import (
     reject_assignment,
     remove_assigned_doctor,
 )
+from services.notification_service import (
+    notify_doctor_assignment_request,
+    notify_patient_assignment_accepted,
+    notify_patient_assignment_rejected,
+)
+from models import User, Patient
+from flask_jwt_extended import get_jwt_identity
+
 
 assignment_bp = Blueprint("assignment", __name__, url_prefix="/api")
 
@@ -31,6 +39,19 @@ def browse_doctors():
 @limiter.limit("5 per hour")
 def request_assignment(doctor_id):
     response, status = request_doctor_assignment(doctor_id)
+        # ── Notify doctor — only on success, no service change ──
+    if status == 201:
+        try:
+            patient_id   = get_jwt_identity()
+            patient_user = User.query.get(patient_id)
+            assignment_id = response.get("assignment", {}).get("id")
+            notify_doctor_assignment_request(
+                doctor_id         = doctor_id,
+                patient_full_name = patient_user.full_name,
+                assignment_id     = assignment_id,
+            )
+        except Exception:
+            pass  
     return jsonify(response), status
 
 
@@ -70,6 +91,19 @@ def doctor_requests():
 @jwt_required_middleware
 def accept_request(assignment_id):
     response, status = accept_assignment(assignment_id)
+    # ── Notify patient — only on success, no service change ──
+    if status == 200:
+        try:
+            doctor_id    = get_jwt_identity()
+            doctor_user  = User.query.get(doctor_id)
+            patient_id   = response.get("assignment", {}).get("patient_id")
+            notify_patient_assignment_accepted(
+                patient_id       = patient_id,
+                doctor_full_name = doctor_user.full_name,
+                assignment_id    = assignment_id,
+            )
+        except Exception:
+            pass
     return jsonify(response), status
 
 
@@ -77,4 +111,17 @@ def accept_request(assignment_id):
 @jwt_required_middleware
 def reject_request(assignment_id):
     response, status = reject_assignment(assignment_id)
+    # ── Notify patient — only on success, no service change ──
+    if status == 200:
+        try:
+            doctor_id    = get_jwt_identity()
+            doctor_user  = User.query.get(doctor_id)
+            patient_id   = response.get("assignment", {}).get("patient_id")
+            notify_patient_assignment_rejected(
+                patient_id       = patient_id,
+                doctor_full_name = doctor_user.full_name,
+                assignment_id    = assignment_id,
+            )
+        except Exception:
+            pass
     return jsonify(response), status

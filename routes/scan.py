@@ -127,6 +127,9 @@ from services.detection_service import (
     get_patient_scans,
     delete_scan,
 )
+from services.notification_service import notify_doctor_scan_uploaded
+from models import User, Patient
+from flask_jwt_extended import get_jwt_identity
 
 detection_bp = Blueprint("detection", __name__, url_prefix="/api/detection")
 
@@ -181,6 +184,23 @@ def patient_upload_with_doctor():
         return jsonify({"success": False, "message": "image_type is required: 'ultrasound' or 'mammogram'."}), 400
 
     response, status = upload_scan_with_doctor(request.files["image"], image_type)
+    # ── Notify doctor — only on success, no service change ──
+    if status == 201:
+        try:
+            patient_id   = get_jwt_identity()
+            patient_user = User.query.get(patient_id)
+            patient      = Patient.query.get(patient_id)
+            scan_id      = response.get("diagnosis", {}).get("scan_id")
+ 
+            if patient.current_assigned_doctor_id:
+                notify_doctor_scan_uploaded(
+                    doctor_id         = str(patient.current_assigned_doctor_id),
+                    patient_full_name = patient_user.full_name,
+                    scan_id           = scan_id,
+                    image_type        = image_type,
+                )
+        except Exception:
+            pass   # notification failure never blocks response
     return jsonify(response), status
 
 
