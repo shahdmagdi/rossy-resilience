@@ -297,11 +297,12 @@ def create_app():
     from models import User, Doctor, Patient, Admin
     from models.email_verification import EmailVerification
     from models.password_reset_token import PasswordResetToken
-    # from models.scan import Scan
     from models.detection_scan import DetectionScan, MultimodalResult
     from models.mri_scan import MriScan
     from models.notification import Notification
     from models.doctor_notes import DoctorNote
+    
+
     
 
     # ================= REDIS USAGE =================
@@ -326,6 +327,7 @@ def create_app():
     from routes.patient import patient_bp
     from routes.notes import notes_bp
     from routes.notification import notification_bp
+    from routes.staging import staging_bp  
 
 
     app.register_blueprint(auth_bp)
@@ -340,6 +342,7 @@ def create_app():
     app.register_blueprint(segmentation_bp)
     app.register_blueprint(notes_bp)
     app.register_blueprint(notification_bp)
+    app.register_blueprint(staging_bp)
 
     # DEBUG: Print all routes
     print("\n=== REGISTERED ROUTES ===")
