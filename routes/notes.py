@@ -17,42 +17,61 @@ notes_bp = Blueprint("notes", __name__, url_prefix="/api")
 #  DOCTOR ROUTES
 # ══════════════════════════════════════════════════════════
 
-# POST /api/doctor/patients/<patient_id>/notes
+# # POST /api/doctor/patients/<patient_id>/notes
 
+# @notes_bp.route("/doctor/patients/<string:patient_id>/notes", methods=["POST"])
+# @jwt_required_middleware
+# def doctor_create_note(patient_id):
+
+#     data = request.get_json()
+
+#     if not data:
+#         return jsonify({
+#             "success": False,
+#             "message": "No data provided."
+#         }), 400
+
+#     visibility = request.args.get(
+#         "visibility",
+#         "private"
+#     ).strip().lower()
+
+#     response, status = create_note(
+#         patient_id,
+#         data,
+#         visibility
+#     )
+
+#     return jsonify(response), status
+
+# def doctor_get_notes(patient_id):
+#     """
+#     Doctor views all notes for a patient.
+#     Optional filter: ?visibility=private|shared
+#     """
+#     visibility = request.args.get("visibility", "").strip().lower() or None
+#     response, status = get_patient_notes(patient_id, visibility)
+#     return jsonify(response), status
+# POST /api/doctor/patients/<patient_id>/notes
 @notes_bp.route("/doctor/patients/<string:patient_id>/notes", methods=["POST"])
 @jwt_required_middleware
 def doctor_create_note(patient_id):
-
     data = request.get_json()
-
     if not data:
-        return jsonify({
-            "success": False,
-            "message": "No data provided."
-        }), 400
+        return jsonify({"success": False, "message": "No data provided."}), 400
 
-    visibility = request.args.get(
-        "visibility",
-        "private"
-    ).strip().lower()
-
-    response, status = create_note(
-        patient_id,
-        data,
-        visibility
-    )
-
+    visibility = data.get("visibility", "private").strip().lower()
+    response, status = create_note(patient_id, data, visibility)
     return jsonify(response), status
 
+
+# GET /api/doctor/patients/<patient_id>/notes
+@notes_bp.route("/doctor/patients/<string:patient_id>/notes", methods=["GET"])
+@jwt_required_middleware
 def doctor_get_notes(patient_id):
-    """
-    Doctor views all notes for a patient.
-    Optional filter: ?visibility=private|shared
-    """
     visibility = request.args.get("visibility", "").strip().lower() or None
     response, status = get_patient_notes(patient_id, visibility)
     return jsonify(response), status
-
 
 # GET /api/doctor/notes/<note_id>
 @notes_bp.route("/doctor/notes/<string:note_id>", methods=["GET"])

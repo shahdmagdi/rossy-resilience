@@ -1,7 +1,64 @@
-BEGIN;
-DELETE FROM users
-WHERE email = 'maimahmoudhasan12345@gmail.com';
-COMMIT;
+-- BEGIN;
+-- DELETE FROM users
+-- WHERE email = 'maimahmoudhasan12345@gmail.com';
+-- COMMIT;
+
+--   ── Embed and upload ───────────────────────────────────────────────
+--   Run this SQL in Supabase SQL editor BEFORE running this script:
+--  
+    -- create extension if not exists vector;
+    
+--     BEGIN;
+select count(*) from documents;
+
+-- -- select current_database(), current_schema();
+
+-- -- select table_schema, table_name
+-- -- from information_schema.tables
+-- -- where table_name = 'documents';
+
+
+-- -- select table_name
+-- -- from information_schema.tables
+-- -- where table_schema = 'public';
+-- create extension if not exists vector;
+
+-- create table if not exists documents (
+--     id text primary key,
+--     content text,
+--     metadata jsonb,
+--     embedding vector(768)
+-- );
+
+-- create index if not exists documents_embedding_idx
+-- on documents
+-- using ivfflat (embedding vector_cosine_ops)
+-- with (lists = 10);
+
+-- create or replace function match_documents (
+--     query_embedding vector(768),
+--     match_count int
+-- )
+-- returns table (
+--     id text,
+--     content text,
+--     metadata jsonb,
+--     similarity float
+-- )
+-- language sql
+-- stable
+-- as $$
+--     select
+--         d.id,
+--         d.content,
+--         d.metadata,
+--         1 - (d.embedding <=> query_embedding) as similarity
+--     from documents d
+--     order by d.embedding <=> query_embedding
+--     limit match_count;
+-- $$;
+
+-- COMMIT;
 -- -- -- -- SELECT email FROM users 
 -- -- -- -- WHERE email = 'Sehamzakaria1974@gmail.com';
 -- SELECT *
