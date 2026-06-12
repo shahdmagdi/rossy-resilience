@@ -8,6 +8,7 @@ from services.notes_service import (
     delete_note,
     get_my_care_plans,
     get_care_plan_by_id,
+    get_all_doctor_notes
 )
 
 notes_bp = Blueprint("notes", __name__, url_prefix="/api")
@@ -53,6 +54,7 @@ notes_bp = Blueprint("notes", __name__, url_prefix="/api")
 #     response, status = get_patient_notes(patient_id, visibility)
 #     return jsonify(response), status
 # POST /api/doctor/patients/<patient_id>/notes
+
 @notes_bp.route("/doctor/patients/<string:patient_id>/notes", methods=["POST"])
 @jwt_required_middleware
 def doctor_create_note(patient_id):
@@ -80,6 +82,24 @@ def doctor_get_single_note(note_id):
     response, status = get_note_by_id_doctor(note_id)
     return jsonify(response), status
 
+
+
+
+# GET /api/doctor/notes
+@notes_bp.route("/doctor/notes", methods=["GET"])
+@jwt_required_middleware
+def doctor_get_all_notes():
+    """
+    Doctor views all notes across all their patients.
+    Optional filters: 
+    - ?visibility=private|shared (filter by visibility)
+    - ?patient_id=<id> (filter by specific patient)
+    """
+    visibility = request.args.get("visibility", "").strip().lower() or None
+    patient_id = request.args.get("patient_id", "").strip() or None
+    
+    response, status = get_all_doctor_notes(visibility, patient_id)
+    return jsonify(response), status
 
 # PUT /api/doctor/notes/<note_id>
 @notes_bp.route("/doctor/notes/<string:note_id>", methods=["PUT"])

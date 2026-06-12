@@ -137,7 +137,43 @@ def create_note(patient_id, data, visibility="private"):
             "error": str(e)
         }, 500
 
+def get_all_doctor_notes(visibility=None, patient_id=None):
+    """
+    Get all notes created by the authenticated doctor.
+    Optional filters by visibility and/or patient_id.
+    """
+    doctor_id, _, error = _get_doctor_or_error()
+    if error:
+        return error
 
+    try:
+        query = DoctorNote.query.filter_by(doctor_id=doctor_id)
+        
+        if visibility:
+            if visibility not in [v.value for v in NoteVisibility]:
+                return {
+                    "success": False,
+                    "message": "visibility must be 'private' or 'shared'."
+                }, 400
+            query = query.filter_by(visibility=NoteVisibility(visibility))
+        
+        if patient_id:
+            query = query.filter_by(patient_id=patient_id)
+        
+        notes = query.order_by(DoctorNote.created_at.desc()).all()
+        
+        return {
+            "success": True,
+            "total": len(notes),
+            "notes": [note.to_dict_doctor() for note in notes]
+        }, 200
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": "Something went wrong.",
+            "error": str(e)
+        }, 500
 # ══════════════════════════════════════════════════════════
 #  GET ALL NOTES FOR A PATIENT — DOCTOR VIEW
 # ══════════════════════════════════════════════════════════
